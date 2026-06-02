@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chamado_provider.dart';
+import '../providers/theme_provider.dart'; // Importação do Tema
 import '../models/chamado_model.dart';
 import 'cadastro_page.dart';
 
@@ -19,7 +20,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   IconData _getIconeCategoria(String categoria) {
-    // Mantemos toLowerCase aqui para a leitura do ícone funcionar sempre
     switch (categoria.toLowerCase()) {
       case 'trânsito': return Icons.traffic;
       case 'iluminação': return Icons.lightbulb;
@@ -32,7 +32,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Color _getCorChamado(Chamado chamado) {
-    // Comparações atualizadas para a primeira letra maiúscula
     if (chamado.status == 'Concluído') {
       return Colors.green;
     } else if (chamado.prioridade == 'Crítica') {
@@ -45,6 +44,42 @@ class _DashboardPageState extends State<DashboardPage> {
     return Colors.grey;
   }
 
+  // --- Função que constrói o Menu Lateral ---
+  Widget _buildDrawer(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Icon(Icons.location_city, color: Colors.white, size: 48),
+                SizedBox(height: 8),
+                Text('SOS Cidade', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                Text('Configurações', style: TextStyle(color: Colors.white70)),
+              ],
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Modo Escuro (Dark Mode)'),
+            secondary: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode),
+            value: themeProvider.isDarkMode,
+            onChanged: (value) {
+              themeProvider.toggleTheme();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,6 +87,7 @@ class _DashboardPageState extends State<DashboardPage> {
         title: const Text('SOS Cidade'),
         centerTitle: true,
       ),
+      drawer: _buildDrawer(context), // O botão sanduíche aparece automaticamente aqui!
       body: Consumer<ChamadoProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
@@ -59,7 +95,6 @@ class _DashboardPageState extends State<DashboardPage> {
           }
 
           final total = provider.chamados.length;
-          // Contadores atualizados
           final abertos = provider.chamados.where((c) => c.status == 'Aberto').length;
           final andamento = provider.chamados.where((c) => c.status == 'Em andamento').length;
           final concluidos = provider.chamados.where((c) => c.status == 'Concluído').length;
@@ -98,12 +133,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    // Referências de filtro atualizadas
                     children: [
-                      _buildCard('Abertos', abertos, Colors.orange, 'Aberto', Icons.folder_open),
-                      _buildCard('Em Andamento', andamento, Colors.blue, 'Em andamento', Icons.autorenew),
-                      _buildCard('Concluídos', concluidos, Colors.green, 'Concluído', Icons.check_circle),
-                      _buildCard('Críticos', criticos, Colors.red, 'Crítica', Icons.warning),
+                      _buildCard('Abertos', abertos, Colors.orange, 'Aberto', Icons.folder_open, context),
+                      _buildCard('Em Andamento', andamento, Colors.blue, 'Em andamento', Icons.autorenew, context),
+                      _buildCard('Concluídos', concluidos, Colors.green, 'Concluído', Icons.check_circle, context),
+                      _buildCard('Críticos', criticos, Colors.red, 'Crítica', Icons.warning, context),
                     ],
                   ),
                 ),
@@ -174,16 +208,15 @@ class _DashboardPageState extends State<DashboardPage> {
                                 trailing: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    // A prioridade agora já vem com a primeira maiúscula da base
                                     Text(chamado.prioridade, style: TextStyle(
-                                      color: chamado.prioridade == 'Crítica' ? Colors.red : Colors.black,
+                                      color: chamado.prioridade == 'Crítica' ? Colors.red : Theme.of(context).textTheme.bodyLarge?.color,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12,
                                     )),
                                     const SizedBox(height: 4),
                                     Text(chamado.status, style: TextStyle(
                                       fontSize: 12, 
-                                      color: chamado.status == 'Concluído' ? Colors.green : Colors.black87,
+                                      color: chamado.status == 'Concluído' ? Colors.green : Theme.of(context).textTheme.bodySmall?.color,
                                       fontWeight: chamado.status == 'Concluído' ? FontWeight.bold : FontWeight.normal
                                     )),
                                   ],
@@ -227,7 +260,8 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildCard(String titulo, int valor, Color cor, String filtroReferencia, IconData icone) {
+  // Recebe o context agora para adaptar a cor do card conforme o tema
+  Widget _buildCard(String titulo, int valor, Color cor, String filtroReferencia, IconData icone, BuildContext context) {
     bool isSelected = _filtroAtual == filtroReferencia;
     
     return Expanded(
@@ -239,7 +273,8 @@ class _DashboardPageState extends State<DashboardPage> {
         },
         child: Card(
           elevation: isSelected ? 4 : 1, 
-          color: isSelected ? cor.withOpacity(0.15) : Colors.white, 
+          // Ajusta a cor de fundo dinamicamente se não estiver selecionado
+          color: isSelected ? cor.withOpacity(0.15) : Theme.of(context).cardColor, 
           shape: RoundedRectangleBorder(
             side: BorderSide(color: isSelected ? cor : Colors.transparent, width: 2), 
             borderRadius: BorderRadius.circular(8),
