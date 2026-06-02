@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/chamado_provider.dart';
-import 'providers/theme_provider.dart'; // Importação do novo provider
-import 'views/dashboard_page.dart';
+import 'providers/theme_provider.dart'; 
+import 'views/splash_page.dart'; // AQUI: Importação da nova Splash Screen
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ChamadoProvider()..loadChamados()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()), // Injeção do Tema
+        ChangeNotifierProvider(create: (_) => ThemeProvider()), 
       ],
       child: const SOSCidadeApp(),
     ),
@@ -21,15 +21,13 @@ class SOSCidadeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Usamos o Consumer para ouvir as mudanças de tema em tempo real
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return MaterialApp(
           title: 'SOS Cidade',
           debugShowCheckedModeBanner: false,
-          themeMode: themeProvider.themeMode, // Controla se é Dark ou Light
+          themeMode: themeProvider.themeMode, 
           
-          // Configuração do Tema Claro
           theme: ThemeData(
             primarySwatch: Colors.blue,
             brightness: Brightness.light,
@@ -40,7 +38,6 @@ class SOSCidadeApp extends StatelessWidget {
             ),
           ),
           
-          // Configuração do Tema Escuro
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             primarySwatch: Colors.blue,
@@ -52,7 +49,8 @@ class SOSCidadeApp extends StatelessWidget {
             ),
           ),
           
-          home: const DashboardPage(),
+          // AQUI: A SplashPage agora é a primeira tela que carrega
+          home: const SplashPage(), 
         );
       },
     );

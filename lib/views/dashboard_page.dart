@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chamado_provider.dart';
-import '../providers/theme_provider.dart'; // Importação do Tema
 import '../models/chamado_model.dart';
+import '../widgets/menu_lateral.dart'; 
 import 'cadastro_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -14,6 +14,16 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   String _filtroAtual = 'Todos'; 
+  
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   String _formatarDataHora(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} às ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -32,62 +42,68 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Color _getCorChamado(Chamado chamado) {
-    if (chamado.status == 'Concluído') {
-      return Colors.green;
-    } else if (chamado.prioridade == 'Crítica') {
-      return Colors.red;
-    } else if (chamado.status == 'Em andamento') {
-      return Colors.blue;
-    } else if (chamado.status == 'Aberto') {
-      return Colors.orange;
-    }
+    if (chamado.status == 'Concluído') return Colors.green;
+    if (chamado.prioridade == 'Crítica') return Colors.red;
+    if (chamado.status == 'Em andamento') return Colors.blue;
+    if (chamado.status == 'Aberto') return Colors.orange;
     return Colors.grey;
   }
 
-  // --- Função que constrói o Menu Lateral ---
-  Widget _buildDrawer(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(
-              color: Colors.blue,
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Icon(Icons.location_city, color: Colors.white, size: 48),
-                SizedBox(height: 8),
-                Text('SOS Cidade', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                Text('Configurações', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-          SwitchListTile(
-            title: const Text('Modo Escuro (Dark Mode)'),
-            secondary: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode),
-            value: themeProvider.isDarkMode,
-            onChanged: (value) {
-              themeProvider.toggleTheme();
-            },
-          ),
-        ],
-      ),
-    );
+  Color _getCorTextoStatus(String status, BuildContext context) {
+    if (status == 'Concluído') return Colors.green;
+    if (status == 'Em andamento') return Colors.blue;
+    if (status == 'Aberto') return Colors.orange;
+    return Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey;
+  }
+
+  Color _getCorPrioridade(String prioridade, BuildContext context) {
+    if (prioridade == 'Crítica') return Colors.red;
+    if (prioridade == 'Alta') return Colors.yellow;
+    if (prioridade == 'Média') return const Color.fromARGB(255, 41, 130, 172);
+    if (prioridade == 'Baixa') return Colors.grey;
+    return Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SOS Cidade'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Buscar chamados...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.white70),
+                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                cursorColor: Colors.white,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+              )
+            : const Text('SOS Cidade'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchController.clear();
+                  _searchQuery = '';
+                }
+              });
+            },
+          ),
+        ],
       ),
-      drawer: _buildDrawer(context), // O botão sanduíche aparece automaticamente aqui!
+      drawer: const MenuLateral(),
+      
       body: Consumer<ChamadoProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
@@ -101,18 +117,29 @@ class _DashboardPageState extends State<DashboardPage> {
           final criticos = provider.chamados.where((c) => c.prioridade == 'Crítica' && c.status != 'Concluído').length;
 
           List<Chamado> chamadosFiltrados = provider.chamados;
+          
           if (_filtroAtual == 'Crítica') {
             chamadosFiltrados = chamadosFiltrados.where((c) => c.prioridade == 'Crítica' && c.status != 'Concluído').toList();
           } else if (_filtroAtual != 'Todos') {
             chamadosFiltrados = chamadosFiltrados.where((c) => c.status == _filtroAtual).toList();
           }
 
+          if (_searchQuery.isNotEmpty) {
+            chamadosFiltrados = chamadosFiltrados.where((c) {
+              final tituloMatch = c.titulo.toLowerCase().contains(_searchQuery);
+              final bairroMatch = c.bairro.toLowerCase().contains(_searchQuery);
+              final categoriaMatch = c.categoria.toLowerCase().contains(_searchQuery);
+              final responsavelMatch = c.responsavel.toLowerCase().contains(_searchQuery);
+              return tituloMatch || bairroMatch || categoriaMatch || responsavelMatch;
+            }).toList();
+          }
+
           return RefreshIndicator(
             onRefresh: () async {
               await provider.loadChamados();
             },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            // AQUI ESTÁ A CORREÇÃO RESPONSIVA: Trocamos o Column por um ListView
+            child: ListView(
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -178,71 +205,79 @@ class _DashboardPageState extends State<DashboardPage> {
 
                 const Divider(),
 
-                Expanded(
-                  child: chamadosFiltrados.isEmpty
-                      ? const Center(child: Text('Nenhum chamado encontrado para este filtro.'))
-                      : ListView.builder(
-                          itemCount: chamadosFiltrados.length,
-                          itemBuilder: (context, index) {
-                            final chamado = chamadosFiltrados[index];
-                            final corBalao = _getCorChamado(chamado); 
-                            
-                            return Card(
-                              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: corBalao.withOpacity(0.2), 
-                                  child: Icon(
-                                    _getIconeCategoria(chamado.categoria),
-                                    color: corBalao,
-                                  ),
+                // AQUI: A lista de itens se adapta ao invés de quebrar
+                if (chamadosFiltrados.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(child: Text('Nenhum chamado encontrado.')),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true, // Diz para a lista ocupar apenas o espaço necessário
+                    physics: const NeverScrollableScrollPhysics(), // Desativa o scroll dessa lista interna (o scroll fica no ListView principal)
+                    itemCount: chamadosFiltrados.length,
+                    itemBuilder: (context, index) {
+                      final chamado = chamadosFiltrados[index];
+                      final corBalao = _getCorChamado(chamado); 
+                      
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: corBalao.withOpacity(0.2), 
+                            child: Icon(
+                              _getIconeCategoria(chamado.categoria),
+                              color: corBalao,
+                            ),
+                          ),
+                          title: Text(chamado.titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${chamado.categoria} • ${chamado.bairro}'),
+                              const SizedBox(height: 2),
+                              Text('Responsável: ${chamado.responsavel}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 2),
+                              Text(chamado.tempoDecorrido, style: const TextStyle(color: Colors.blueGrey, fontSize: 12)),
+                            ],
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(chamado.prioridade, style: TextStyle(
+                                color: _getCorPrioridade(chamado.prioridade, context),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              )),
+                              const SizedBox(height: 4),
+                              Text(chamado.status, style: TextStyle(
+                                fontSize: 12, 
+                                color: _getCorTextoStatus(chamado.status, context),
+                                fontWeight: FontWeight.bold
+                              )),
+                            ],
+                          ),
+                          onTap: () {
+                            if (chamado.status == 'Concluído') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Chamados concluídos não podem ser editados.'),
+                                  backgroundColor: Colors.red,
                                 ),
-                                title: Text(chamado.titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('${chamado.categoria} • ${chamado.bairro}'),
-                                    Text(chamado.tempoDecorrido, style: const TextStyle(color: Colors.blueGrey, fontSize: 12)),
-                                  ],
+                              );
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CadastroPage(chamadoParaEditar: chamado),
                                 ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(chamado.prioridade, style: TextStyle(
-                                      color: chamado.prioridade == 'Crítica' ? Colors.red : Theme.of(context).textTheme.bodyLarge?.color,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    )),
-                                    const SizedBox(height: 4),
-                                    Text(chamado.status, style: TextStyle(
-                                      fontSize: 12, 
-                                      color: chamado.status == 'Concluído' ? Colors.green : Theme.of(context).textTheme.bodySmall?.color,
-                                      fontWeight: chamado.status == 'Concluído' ? FontWeight.bold : FontWeight.normal
-                                    )),
-                                  ],
-                                ),
-                                onTap: () {
-                                  if (chamado.status == 'Concluído') {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Chamados concluídos não podem ser editados.'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  } else {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => CadastroPage(chamadoParaEditar: chamado),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                            );
+                              );
+                            }
                           },
                         ),
-                ),
+                      );
+                    },
+                  ),
               ],
             ),
           );
@@ -260,7 +295,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // Recebe o context agora para adaptar a cor do card conforme o tema
   Widget _buildCard(String titulo, int valor, Color cor, String filtroReferencia, IconData icone, BuildContext context) {
     bool isSelected = _filtroAtual == filtroReferencia;
     
@@ -273,7 +307,6 @@ class _DashboardPageState extends State<DashboardPage> {
         },
         child: Card(
           elevation: isSelected ? 4 : 1, 
-          // Ajusta a cor de fundo dinamicamente se não estiver selecionado
           color: isSelected ? cor.withOpacity(0.15) : Theme.of(context).cardColor, 
           shape: RoundedRectangleBorder(
             side: BorderSide(color: isSelected ? cor : Colors.transparent, width: 2), 

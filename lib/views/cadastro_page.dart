@@ -20,14 +20,13 @@ class _CadastroPageState extends State<CadastroPage> {
   final _bairroController = TextEditingController();
   final _responsavelController = TextEditingController();
 
-  // Listas atualizadas com a primeira letra maiúscula
   final List<String> _categorias = ['Trânsito', 'Iluminação', 'Saneamento', 'Segurança', 'Limpeza urbana', 'Desastre natural'];
   final List<String> _prioridades = ['Baixa', 'Média', 'Alta', 'Crítica'];
   final List<String> _statusOpcoes = ['Aberto', 'Em andamento', 'Concluído'];
 
   String? _categoriaSelecionada;
   String? _prioridadeSelecionada;
-  String _statusSelecionado = 'Aberto'; // Status padrão atualizado
+  String _statusSelecionado = 'Aberto'; 
 
   bool get _isEdicao => widget.chamadoParaEditar != null;
 
@@ -53,6 +52,34 @@ class _CadastroPageState extends State<CadastroPage> {
     _bairroController.dispose();
     _responsavelController.dispose();
     super.dispose();
+  }
+
+  // NOVA FUNÇÃO: Retorna o ícone correspondente à categoria
+  IconData _getIconeCategoria(String categoria) {
+    switch (categoria.toLowerCase()) {
+      case 'trânsito': return Icons.traffic;
+      case 'iluminação': return Icons.lightbulb;
+      case 'saneamento': return Icons.water_drop;
+      case 'segurança': return Icons.local_police;
+      case 'limpeza urbana': return Icons.delete;
+      case 'desastre natural': return Icons.storm;
+      default: return Icons.report_problem;
+    }
+  }
+
+  Color _getCorPrioridade(String prioridade) {
+    if (prioridade == 'Crítica') return Colors.red;
+    if (prioridade == 'Alta') return Colors.yellow;
+    if (prioridade == 'Média') return const Color.fromARGB(255, 41, 130, 172);
+    if (prioridade == 'Baixa') return Colors.grey;
+    return Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
+  }
+
+  Color _getCorStatus(String status) {
+    if (status == 'Concluído') return Colors.green;
+    if (status == 'Em andamento') return Colors.blue;
+    if (status == 'Aberto') return Colors.orange;
+    return Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
   }
 
   void _salvarChamado() {
@@ -113,10 +140,24 @@ class _CadastroPageState extends State<CadastroPage> {
               ),
               const SizedBox(height: 16),
 
+              // AQUI: Dropdown de Categoria com Ícone e Texto usando uma Row
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Categoria', border: OutlineInputBorder()),
                 value: _categoriaSelecionada,
-                items: _categorias.map((String categoria) => DropdownMenuItem(value: categoria, child: Text(categoria))).toList(),
+                items: _categorias.map((String categoria) => DropdownMenuItem(
+                  value: categoria, 
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getIconeCategoria(categoria),
+                        color: Colors.blueGrey, // Cor neutra para o ícone
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(categoria),
+                    ],
+                  )
+                )).toList(),
                 onChanged: (val) => setState(() => _categoriaSelecionada = val),
                 validator: (value) => value == null ? 'Selecione uma categoria' : null,
               ),
@@ -125,7 +166,16 @@ class _CadastroPageState extends State<CadastroPage> {
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Prioridade', border: OutlineInputBorder()),
                 value: _prioridadeSelecionada,
-                items: _prioridades.map((String prioridade) => DropdownMenuItem(value: prioridade, child: Text(prioridade))).toList(),
+                items: _prioridades.map((String prioridade) => DropdownMenuItem(
+                  value: prioridade, 
+                  child: Text(
+                    prioridade,
+                    style: TextStyle(
+                      color: _getCorPrioridade(prioridade),
+                      fontWeight: FontWeight.bold, 
+                    ),
+                  )
+                )).toList(),
                 onChanged: (val) => setState(() => _prioridadeSelecionada = val),
                 validator: (value) => value == null ? 'Selecione uma prioridade' : null,
               ),
@@ -135,7 +185,16 @@ class _CadastroPageState extends State<CadastroPage> {
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Status do Chamado', border: OutlineInputBorder()),
                   value: _statusSelecionado,
-                  items: _statusOpcoes.map((String status) => DropdownMenuItem(value: status, child: Text(status))).toList(),
+                  items: _statusOpcoes.map((String status) => DropdownMenuItem(
+                    value: status, 
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: _getCorStatus(status),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  )).toList(),
                   onChanged: (val) => setState(() => _statusSelecionado = val!),
                 ),
                 const SizedBox(height: 16),
