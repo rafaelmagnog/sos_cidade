@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "277182412918",
+    "project_id": "sos-cidade-8adf3",
+    "storage_bucket": "sos-cidade-8adf3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:277182412918:android:1ae515ee6d7701d6d38757",
+        "android_client_info": {
+          "package_name": "com.example.sos_cidade"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQfqzNEpGY4zOxTw4UT8yegK5-fUIiANY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

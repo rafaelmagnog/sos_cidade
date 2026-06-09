@@ -2,13 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/chamado_provider.dart';
 import 'providers/theme_provider.dart'; 
-import 'views/splash_page.dart'; // AQUI: Importação da nova Splash Screen
+import 'services/notification_service.dart'; 
+import 'views/splash_page.dart';
+import 'package:firebase_core/firebase_core.dart'; 
+import 'firebase_options.dart'; 
 
-void main() {
+void main() async {
+  // Garante a inicialização correta dos bindings antes de ligar os serviços nativos
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializa o Firebase com as configurações geradas pelo CLI
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Inicializa o serviço de notificações locais
+  await NotificationService.init();
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ChamadoProvider()..loadChamados()),
+        // Carrega do SQLite e liga o Radar da Nuvem simultaneamente!
+        ChangeNotifierProvider(
+          create: (_) => ChamadoProvider()
+            ..loadChamados()
+            ..escutarChamadosEmTempoReal(),
+        ),
         ChangeNotifierProvider(create: (_) => ThemeProvider()), 
       ],
       child: const SOSCidadeApp(),
@@ -49,7 +68,6 @@ class SOSCidadeApp extends StatelessWidget {
             ),
           ),
           
-          // AQUI: A SplashPage agora é a primeira tela que carrega
           home: const SplashPage(), 
         );
       },
